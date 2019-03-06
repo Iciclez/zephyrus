@@ -451,6 +451,8 @@ const std::vector<uint8_t> zephyrus::string_to_bytes(const std::string & array_o
 	{
 		return bytes;
 	}
+	
+	bytes.reserve(aob.size() / 2);
 
 	std::mt19937 mt(static_cast<uint32_t>(std::chrono::system_clock::now().time_since_epoch().count()));
 	std::uniform_int_distribution<int16_t> dist(0, 15);
