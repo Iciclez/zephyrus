@@ -132,14 +132,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aobscan.hpp" />
-    <ClInclude Include="aobscanbase.hpp" />
     <ClInclude Include="assembler.hpp" />
     <ClInclude Include="disassembler.hpp" />
     <ClInclude Include="zephyrus.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="aobscan.cpp" />
-    <ClCompile Include="aobscanbase.cpp" />
     <ClCompile Include="assembler.cpp" />
     <ClCompile Include="disassembler.cpp" />
     <ClCompile Include="zephyrus.cpp" />

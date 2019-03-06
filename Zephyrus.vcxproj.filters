@@ -24,9 +24,6 @@
     <ClInclude Include="assembler.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="aobscanbase.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="aobscan.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -42,9 +39,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="disassembler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="aobscanbase.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="aobscan.cpp">

@@ -1,21 +1,3 @@
-/*
-
-Copyright 2018 Iciclez
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-*/
-
 #pragma once
 #include <windows.h>
 #include <cstdint>
@@ -25,7 +7,7 @@ limitations under the License.
 #include <functional>
 #include <queue>
 
-//#define X64 1
+#define X86 1
 
 typedef uint64_t qword;
 typedef DWORD dword;
@@ -101,6 +83,9 @@ public:
 	template <class T> bool redirect(T *address, T function, bool enable = true);
 	template <class T> bool redirect(hook_operation operation, T *address, T function, bool enable = true);
 
+	bool detour(lpvoid *from, lpvoid to, bool enable = true);
+	template <class T> bool detour(T *from, T to, bool enable = true);
+
 	bool sethook(hook_operation operation, address_t address, address_t function, size_t nop_count = -1, bool retain_bytes = true);
 	bool sethook(hook_operation operation, address_t address, const std::string &assembler_code, size_t nop_count = -1, bool retain_bytes = true);
 	bool sethook(hook_operation operation, address_t address, const std::vector<std::string> &assembler_code, size_t nop_count = -1, bool retain_bytes = true);
@@ -120,7 +105,7 @@ public:
 	bool assemble(const std::string &assembler_code, _Out_ std::vector<byte> &bytecode);
 
 	size_t getnopcount(address_t address, hook_operation operation);
-	
+
 	static const std::string byte_to_string(const std::vector<byte> &bytes, const std::string &separator = " ");
 	static const std::vector<byte> string_to_bytes(const std::string &array_of_bytes);
 
@@ -150,6 +135,12 @@ template<class T>
 inline bool zephyrus::redirect(hook_operation operation, T * address, T function, bool enable)
 {
 	return this->redirect(operation, reinterpret_cast<address_t*>(address), reinterpret_cast<address_t>(function), enable);
+}
+
+template<class T>
+inline bool zephyrus::detour(T * from, T to, bool enable)
+{
+	return this->detour(reinterpret_cast<lpvoid*>(from), to, enable);
 }
 
 template<hook_operation T>
@@ -182,7 +173,7 @@ inline bool zephyrus::writedata(address_t address, T data)
 template<typename T>
 inline const T zephyrus::readdata(address_t address)
 {
-	return ryumem::convert_to<T>(this->readmemory(address, sizeof(T)));
+	return zephyrus::convert_to<T>(this->readmemory(address, sizeof(T)));
 }
 
 template<typename T>

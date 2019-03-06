@@ -1,30 +1,15 @@
-/*
-
-Copyright 2018 Iciclez
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-*/
-
 #include "zephyrus.hpp"
 #include "assembler.hpp"
 #include "disassembler.hpp"
+#include "detours.h"
 
 #include <sstream>
 #include <iomanip>
 #include <random>
 #include <chrono>
 #include <algorithm>
+
+#pragma comment (lib, "detours.lib")
 
 zephyrus::zephyrus(padding_byte padding)
 {
@@ -222,7 +207,7 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 
 		//additional step in x64 where we will have to take our trampoline bytes ->
 		//dump it into disassembler & reassemble the opcodes to ensure accuracy of bytes
-		
+
 		std::vector<instruction> instructions = disassembler(reinterpret_cast<address_t>(trampoline.data()), trampoline, disassembler::x64).get_instructions();
 		std::string assembler_instruction = "";
 		for (const instruction & i : instructions)
@@ -235,7 +220,7 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 		}
 
 		//this->assemble(assembler_instruction, trampoline);
-		
+
 #endif
 		trampoline.resize(trampoline.size() + JMP_SIZE);
 		this->trampoline_table[*address] = trampoline;
@@ -282,6 +267,28 @@ bool zephyrus::redirect(address_t * address, address_t function, bool enable)
 	return this->redirect(JMP, address, function, enable);
 }
 
+bool zephyrus::detour(lpvoid * from, lpvoid to, bool enable)
+{
+	if (DetourTransactionBegin() != NO_ERROR)
+	{
+		return false;
+	}
+
+	if (DetourUpdateThread(GetCurrentThread()) != NO_ERROR)
+	{
+		DetourTransactionAbort();
+		return false;
+	}
+
+	if ((enable ? DetourAttach : DetourDetach)(from, to) != NO_ERROR)
+	{
+		DetourTransactionAbort();
+		return false;
+	}
+
+	return DetourTransactionCommit() == NO_ERROR;
+}
+
 bool zephyrus::sethook(hook_operation operation, address_t address, address_t function, size_t nop_count, bool retain_bytes)
 {
 	//TODO X64
@@ -307,7 +314,7 @@ bool zephyrus::sethook(hook_operation operation, address_t address, address_t fu
 		{
 			std::vector<byte> x64jmp = { 0xFF, 0x25, 0x00, 0x00, 0x00, 0x00 };
 			bytes.insert(bytes.end(), x64jmp.begin(), x64jmp.end());
-	}
+		}
 		/*
 		else if (operation == CALL)
 		{
@@ -371,7 +378,7 @@ bool zephyrus::sethook(hook_operation operation, address_t address, const std::v
 
 bool zephyrus::assemble(const std::string & assembler_code, std::vector<byte>& bytecode)
 {
-	return assembler(std::vector<std::string>(), 
+	return assembler(std::vector<std::string>(),
 #ifdef X64
 		assembler::x64
 #else
