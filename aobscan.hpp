@@ -16,7 +16,7 @@ public:
 	//qword or dword
 	template <typename T> T address();
 
-protected:
+private:
 	std::vector<byte> bytearray;
 	std::vector<byte> mask;
 	std::string pattern;
