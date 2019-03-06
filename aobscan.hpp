@@ -9,16 +9,16 @@ public:
 	aobscan(const std::string &pattern, void *memory_start = 0, size_t memory_size = 0, uint32_t result = 1);
 	~aobscan() noexcept;
 
-	const std::vector<byte> &get_bytearray();
-	const std::vector<byte> &get_mask();
+	const std::vector<uint8_t> &get_bytearray();
+	const std::vector<uint8_t> &get_mask();
 	const std::string &get_pattern();
 
 	//qword or dword
 	template <typename T> T address();
 
 private:
-	std::vector<byte> bytearray;
-	std::vector<byte> mask;
+	std::vector<uint8_t> bytearray;
+	std::vector<uint8_t> mask;
 	std::string pattern;
 
 	void *memory_start;
@@ -41,7 +41,7 @@ inline T aobscan::address()
 			size_t j = 0;
 			while (j < this->pattern_size &&
 				//continue if mask at is ?? or byte at address matches bytearray at
-				(this->mask.at(j) == 0x01 || !(*reinterpret_cast<byte*>(i + j) ^ bytearray.at(j))))
+				(this->mask.at(j) == 0x01 || !(*reinterpret_cast<uint8_t*>(i + j) ^ bytearray.at(j))))
 			{
 				++j;
 			}

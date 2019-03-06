@@ -51,12 +51,12 @@ aobscan::~aobscan() noexcept
 {
 }
 
-const std::vector<byte>& aobscan::get_bytearray()
+const std::vector<uint8_t>& aobscan::get_bytearray()
 {
 	return this->bytearray;
 }
 
-const std::vector<byte>& aobscan::get_mask()
+const std::vector<uint8_t>& aobscan::get_mask()
 {
 	return this->mask;
 }
