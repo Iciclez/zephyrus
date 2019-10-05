@@ -6,7 +6,13 @@
 #include <algorithm>
 #include <iomanip>
 
+#ifdef X86
 #pragma comment (lib, "keystone.lib")
+#elif X64
+#pragma comment (lib, "keystone64.lib")
+#else
+#pragma comment (lib, "keystone.lib")
+#endif
 
 assembler::assembler(const std::vector<std::string>& instructions, assembler_mode mode, assembler_syntax syntax)
 	: instructions(instructions), mode(mode), syntax(syntax)

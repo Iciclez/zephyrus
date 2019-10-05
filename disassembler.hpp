@@ -44,9 +44,10 @@ public:
 	size_t size() const;
 
 	std::vector<instruction> get_instructions() const;
+	std::string get_instructions_string(const std::string &separator = "\n", const std::string &begin = "", const std::string &end = "");
+	static std::string get_instructions_string(const std::vector<instruction> &instructions, const std::string &separator = "\n", const std::string &begin = "", const std::string &end = "");
+	
 	std::vector<uint8_t> get_bytecode() const;
-
-	instruction *get_instruction(size_t index) const;
 
 	std::string get_register_name(x86_reg x86_register) const;
 
@@ -58,5 +59,5 @@ private:
 	size_t instruction_size;
 
 	std::vector<uint8_t> bytecode;
-
+	disassembler_mode mode;
 };

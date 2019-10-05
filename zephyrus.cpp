@@ -11,7 +11,13 @@
 
 #include "detours.h"
 
+#ifdef X86
 #pragma comment (lib, "detours.lib")
+#elif X64
+#pragma comment (lib, "detours64.lib")
+#else
+#pragma comment (lib, "detours.lib")
+#endif
 
 zephyrus::zephyrus(padding_byte padding)
 	: padding(padding)
@@ -188,68 +194,74 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 {
 	if (enable)
 	{
-#ifdef X64
-		size_t size = operation == JMP ? 14 : static_cast<size_t>(-1) + this->getnopcount(*address, operation);
-#else
-		size_t size = 5 + (operation > 0xff ? 1 : 0) + this->getnopcount(*address, operation);
+		size_t redirect_size = 5 + (operation > 0xff ? 1 : 0) + this->getnopcount(*address, operation);
+
+#ifdef X86
+		size_t JMP_SIZE = 5;
+#elif X64
+		size_t JMP_SIZE = 14;
 #endif
 
-#ifdef X64
-		const size_t JMP_SIZE = 14;
-#else
-		const size_t JMP_SIZE = 5;
-#endif
+		//insert trampoline (orig function bytes)
+		std::vector<uint8_t> trampoline = this->readmemory(*address, redirect_size);
 
-		//insert trampoline
-		std::vector<uint8_t> trampoline = this->readmemory(*address, size);
-#ifdef X64
-
-		//additional step in x64 where we will have to take our trampoline bytes ->
-		//dump it into disassembler & reassemble the opcodes to ensure accuracy of bytes
-		
-		std::vector<instruction> instructions = disassembler(reinterpret_cast<address_t>(trampoline.data()), trampoline, disassembler::x64).get_instructions();
-		std::string assembler_instruction = "";
-		for (const instruction & i : instructions)
-		{
-			//assembler_instruction += i.mnemonic;
-			//assembler_instruction += " ";
-			//assembler_instruction += i.op_str;
-			//assembler_instruction += "\n";
-			printf("%p: %s %s\n", i.address, i.mnemonic, i.op_str);
-		}
-
-		//this->assemble(assembler_instruction, trampoline);
-		
-#endif
+		//add jmp at end of original bytes
 		trampoline.resize(trampoline.size() + JMP_SIZE);
 		this->trampoline_table[*address] = trampoline;
-		this->sethook(JMP, reinterpret_cast<address_t>(this->trampoline_table[*address].data() + this->trampoline_table[*address].size() - JMP_SIZE), *address + size, 0, false);
+		this->sethook(
+#ifdef X86
+			JMP
+#elif X64
+			JMP_64
+#endif
+			, reinterpret_cast<address_t>(this->trampoline_table[*address].data() + this->trampoline_table[*address].size() - JMP_SIZE),
+			*address + redirect_size, 0, false);
 
 		//enable page_readwrite_execute in trampoline
 		this->protectvirtualmemory(reinterpret_cast<address_t>(this->trampoline_table[*address].data()), this->trampoline_table[*address].size());
 
 		//relocate address ptr to trampoline function
-		this->trampoline_detour[reinterpret_cast<address_t>(this->trampoline_table[*address].data())] = *address;
+		this->trampoline_detour[reinterpret_cast<address_t>(this->trampoline_table[*address].data())] = std::make_pair(*address, 0);
 		*address = reinterpret_cast<address_t>(this->trampoline_table[*address].data());
 
+#ifdef X86
+
 		return this->sethook(operation, this->trampoline_detour[*address], function);
+
+#elif X64
+		
+		this->trampoline_detour[*address].second = reinterpret_cast<address_t>(
+			DetourAllocateRegionWithinJumpBounds(
+					reinterpret_cast<void*>(this->trampoline_detour[*address].first), 
+					reinterpret_cast<PDWORD>(&JMP_SIZE)
+			));
+		this->sethook(JMP_64, this->trampoline_detour[*address].second, function, 0, false);
+
+		return this->sethook(operation, this->trampoline_detour[*address].first, this->trampoline_detour[*address].second);
+
+#endif
 	}
 
 	//restores address from our trampoline detour
-	*address = this->trampoline_detour[*address];
+	*address = this->trampoline_detour[*address].first;
 
 	//remove trampoline_detour and trampoline_table
 
-	for (std::unordered_map<address_t, address_t>::iterator it = this->trampoline_detour.begin(); it != this->trampoline_detour.end(); ++it)
+	for (auto it = this->trampoline_detour.begin(); it != this->trampoline_detour.end(); ++it)
 	{
 		//std::pair<> of relocated_address to our real_address
-		if ((*it).second == *address)
+		if ((*it).second.first == *address)
 		{
+#ifdef X64
+			VirtualFree(reinterpret_cast<void*>((*it).second.second), 0, MEM_RELEASE);
+#elif X86
+			//pair<>::second is unused
+#endif
 			this->trampoline_detour.erase(it);
 		}
 	}
 
-	for (std::unordered_map<address_t, std::vector<uint8_t>>::iterator it = this->trampoline_table.begin(); it != this->trampoline_table.end(); ++it)
+	for (auto it = this->trampoline_table.begin(); it != this->trampoline_table.end(); ++it)
 	{
 		//std::pair<> of real_address to trampoline bytes
 		if ((*it).first == *address)
@@ -290,54 +302,25 @@ bool zephyrus::detour(void ** from, void *to, bool enable)
 
 bool zephyrus::sethook(hook_operation operation, address_t address, address_t function, size_t nop_count, bool retain_bytes)
 {
-	//TODO X64
 	if (nop_count == -1)
 	{
 		nop_count = this->getnopcount(address, operation);
 	}
 
-#ifdef X64
-
-	size_t size = operation == JMP ? 14 : static_cast<size_t>(-1);
-
-	return this->pageexecutereadwrite(address, size, [&]()
-	{
-		if (retain_bytes)
-		{
-			memoryedit[address] = this->readmemory(address, size);
-		}
-
-		std::vector<uint8_t> bytes;
-
-		if (operation == JMP)
-		{
-			std::vector<uint8_t> x64jmp = { 0xFF, 0x25, 0x00, 0x00, 0x00, 0x00 };
-			bytes.insert(bytes.end(), x64jmp.begin(), x64jmp.end());
-	}
-		/*
-		else if (operation == CALL)
-		{
-		std::vector<uint8_t> x64call = { 0xFF, 0x15, 0x02, 0x00, 0x00, 0x00, 0xE8, 0x08 };
-		bytes.insert(bytes.end(), x64call.begin(), x64call.end());
-		}
-		*/
-		else
-		{
-			throw std::exception("exception operation not supported");
-		}
-
-		std::vector<uint8_t> pfunction = this->readmemory(reinterpret_cast<address_t>(&function), 8);
-		bytes.insert(bytes.end(), pfunction.begin(), pfunction.end());
-
-		bytes.insert(bytes.end(), nop_count, static_cast<uint8_t>(padding));
-
-		this->writememory(address, bytes, false);
-	});
-
-#else
 	int32_t i = operation > 0xff ? 1 : 0;
 	size_t size = 5 + i + nop_count;
 
+	//handle x64 instruction
+	if (operation == JMP_64)
+	{
+		size = 14 + nop_count;
+	}
+	else if (operation == CALL_64)
+	{
+		size = 16 + nop_count;
+	}
+
+
 	return this->pageexecutereadwrite(address, size, [&]()
 	{
 		if (retain_bytes)
@@ -345,11 +328,25 @@ bool zephyrus::sethook(hook_operation operation, address_t address, address_t fu
 			memoryedit[address] = this->readmemory(address, size);
 		}
 
-		*reinterpret_cast<address_t*>(address) = operation;
-		*reinterpret_cast<address_t*>(address + 1 + i) = static_cast<address_t>(function - address - 5 - i);
-		this->writepadding(address + 5 + i, nop_count);
+		if (operation == JMP_64)
+		{
+			*reinterpret_cast<address_t*>(address) = 0x0000000025FF;
+			*reinterpret_cast<address_t*>(address + 6) = function;
+		}
+		else if (operation == CALL_64)
+		{
+			*reinterpret_cast<address_t*>(address) = CALL_64;
+			*reinterpret_cast<address_t*>(address + 8) = function;
+		}
+		else
+		{
+			//maximum of 4 bytes address can use this case
+			*reinterpret_cast<uint32_t*>(address) = operation;
+			*reinterpret_cast<uint32_t*>(address + 1 + i) = static_cast<uint32_t>(function - address - 5 - i);
+		}
+
+		this->writepadding(address + size - nop_count, nop_count);
 	});
-#endif
 }
 
 bool zephyrus::sethook(hook_operation operation, address_t address, const std::string & assembler_code, size_t nop_count, bool retain_bytes)
@@ -391,17 +388,15 @@ bool zephyrus::assemble(const std::string & assembler_code, std::vector<uint8_t>
 
 size_t zephyrus::getnopcount(address_t address, hook_operation operation)
 {
-#ifdef X64
-
-	size_t hooksize = operation == JMP ? 14 : static_cast<size_t>(-1);
-	std::vector<instruction> instructions = disassembler(static_cast<uint64_t>(address), this->readmemory(address, 32), disassembler::x64).get_instructions();
-
-
-#else
 	size_t hooksize = 5 + (operation > 0xff ? 1 : 0);
-	std::vector<instruction> instructions = disassembler(static_cast<uint64_t>(address), this->readmemory(address, 12)).get_instructions();
 
+	std::vector<instruction> instructions = disassembler(static_cast<uint64_t>(address), 
+#ifdef X86
+			this->readmemory(address, 12)
+#elif X64
+			this->readmemory(address, 32), disassembler::x64
 #endif
+	).get_instructions();
 
 	for (size_t n = 0, m = 0; n < instructions.size(); ++n)
 	{
@@ -451,7 +446,7 @@ const std::vector<uint8_t> zephyrus::string_to_bytes(const std::string & array_o
 	{
 		return bytes;
 	}
-	
+
 	bytes.reserve(aob.size() / 2);
 
 	std::mt19937 mt(static_cast<uint32_t>(std::chrono::system_clock::now().time_since_epoch().count()));

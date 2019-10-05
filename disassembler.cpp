@@ -8,10 +8,16 @@
 #include <algorithm>
 #include <iomanip>
 
+#ifdef X86
 #pragma comment (lib, "capstone.lib")
+#elif X64
+#pragma comment (lib, "capstone64.lib")
+#else
+#pragma comment (lib, "capstone.lib")
+#endif
 
 disassembler::disassembler(uint64_t address, const std::vector<uint8_t>& bytecode, disassembler_mode mode)
-	: bytecode(bytecode)
+	: bytecode(bytecode), mode(mode)
 {
 	cs_mode m = CS_MODE_32;
 
@@ -89,14 +95,50 @@ std::vector<instruction> disassembler::get_instructions() const
 	return instructions;
 }
 
+std::string disassembler::get_instructions_string(const std::string & separator, const std::string &begin, const std::string &end)
+{
+	std::stringstream stream;
+
+	for (size_t n = 0; n < this->size(); ++n)
+	{
+		stream << begin << this->instructions[n].mnemonic << ' ' << this->instructions[n].op_str << end;
+		
+		if (n + 1 != this->size())
+		{
+			stream << separator;
+		}
+	}
+	
+	std::string result(stream.str());
+
+	std::transform(result.begin(), result.end(), result.begin(), toupper);
+
+	return result;
+}
+
+std::string disassembler::get_instructions_string(const std::vector<instruction> &instructions, const std::string & separator, const std::string &begin, const std::string &end)
+{
+	std::stringstream stream;
+
+	for (size_t n = 0; n < instructions.size(); ++n)
+	{
+		stream << begin << instructions.at(n).mnemonic << ' ' << instructions.at(n).op_str << end;
+
+		if (n + 1 != instructions.size())
+		{
+			stream << separator;
+		}
+	}
+
+	std::string result(stream.str());
+
+	std::transform(result.begin(), result.end(), result.begin(), toupper);
+
+	return result;
+}
 std::vector<uint8_t> disassembler::get_bytecode() const
 {
 	return this->bytecode;
-}
-
-instruction *disassembler::get_instruction(size_t index) const
-{
-	return index >= this->size() ? nullptr : &instructions[index];
 }
 
 std::string disassembler::get_register_name(x86_reg x86_register) const

@@ -6,7 +6,7 @@
 #include <functional>
 #include <queue>
 
-#define X86 1
+#define X64 1
 
 #ifdef X86
 typedef uint32_t address_t;
@@ -17,15 +17,26 @@ typedef uint32_t address_t;
 #endif
 
 
-enum hook_operation : uint16_t
+enum hook_operation : 
+#ifdef X86
+	uint16_t
+#elif X64
+	uint64_t
+#endif
 {
-#ifdef X64
-	JMP = 0xE9
-#else
 	JECXZ = 0xE3, //jmp if ecx == 0 short
 
 	CALL = 0xE8,
-	JMP = 0xE9, //jmp long
+
+	CALL_64 = 0x08EB0000000215FF,
+
+	JMP = 0xE9,
+
+	JMP_8 = 0xEB, //
+	JMP_16 = 0xE9, //
+	JMP_32 = 0xE9, //
+	JMP_64 = 0xffffffff000025FF, //bytes for jmp imm64 is 0x0000000025FF
+
 	JMP_SPECIAL = 0xEA,
 	JMP_SHORT = 0xEB,
 
@@ -34,8 +45,8 @@ enum hook_operation : uint16_t
 	JA = 0x870F,
 	JB = 0x820F,
 
-	CALL_DWORD_PTR = 0x15FF,
-	JMP_DWORD_PTR = 0x25FF,
+	CALL_PTR = 0x15FF,
+	JMP_PTR = 0x25FF, //jmp [imm32], jmp dword ptr, jmp qword ptr
 
 	//0x70 <= pb[0] && pb[0] <= 0x7F
 	// jo, jno, jb, jnb, jz, jnz, jbe, ja, js, jns, jp, jnp, jl, jnl, jle, jnle
@@ -43,7 +54,6 @@ enum hook_operation : uint16_t
 
 	//(pb[0] == 0x0F && (0x80 <= pb[1] && pb[1] <= 0x8F))
 	//
-#endif
 };
 
 
@@ -113,7 +123,7 @@ private:
 	std::function<bool(address_t, size_t, const std::function<void(void)> &)> pageexecutereadwrite;
 	std::unordered_map<address_t, std::vector<uint8_t>> hook_memory;
 
-	std::unordered_map<address_t, address_t> trampoline_detour;
+	std::unordered_map<address_t, std::pair<address_t, address_t>> trampoline_detour;
 	std::unordered_map<address_t, std::vector<uint8_t>> trampoline_table;
 };
 

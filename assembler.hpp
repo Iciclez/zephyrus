@@ -2,6 +2,7 @@
 #include "keystone\keystone.h"
 #include <cstdint>
 #include <vector>
+#include <string>
 
 class assembler
 {
