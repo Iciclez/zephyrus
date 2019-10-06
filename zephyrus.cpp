@@ -194,7 +194,7 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 {
 	if (enable)
 	{
-		size_t redirect_size = 5 + (operation > 0xff ? 1 : 0) + this->getnopcount(*address, operation);
+		size_t size = 5 + (operation > 0xff ? 1 : 0) + this->getnopcount(*address, operation);
 
 #ifdef X86
 		size_t JMP_SIZE = 5;
@@ -203,7 +203,7 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 #endif
 
 		//insert trampoline (orig function bytes)
-		std::vector<uint8_t> trampoline = this->readmemory(*address, redirect_size);
+		std::vector<uint8_t> trampoline = this->readmemory(*address, size);
 
 		//add jmp at end of original bytes
 		trampoline.resize(trampoline.size() + JMP_SIZE);
@@ -215,7 +215,7 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 			JMP_64
 #endif
 			, reinterpret_cast<address_t>(this->trampoline_table[*address].data() + this->trampoline_table[*address].size() - JMP_SIZE),
-			*address + redirect_size, 0, false);
+			*address + size, 0, false);
 
 		//enable page_readwrite_execute in trampoline
 		this->protectvirtualmemory(reinterpret_cast<address_t>(this->trampoline_table[*address].data()), this->trampoline_table[*address].size());
@@ -226,7 +226,7 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 
 #ifdef X86
 
-		return this->sethook(operation, this->trampoline_detour[*address], function);
+		return this->sethook(operation, this->trampoline_detour[*address].first, function);
 
 #elif X64
 		

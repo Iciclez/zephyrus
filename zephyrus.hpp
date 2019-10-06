@@ -6,7 +6,7 @@
 #include <functional>
 #include <queue>
 
-#define X64 1
+#define X86 1
 
 #ifdef X86
 typedef uint32_t address_t;
@@ -27,15 +27,7 @@ enum hook_operation :
 	JECXZ = 0xE3, //jmp if ecx == 0 short
 
 	CALL = 0xE8,
-
-	CALL_64 = 0x08EB0000000215FF,
-
 	JMP = 0xE9,
-
-	JMP_8 = 0xEB, //
-	JMP_16 = 0xE9, //
-	JMP_32 = 0xE9, //
-	JMP_64 = 0xffffffff000025FF, //bytes for jmp imm64 is 0x0000000025FF
 
 	JMP_SPECIAL = 0xEA,
 	JMP_SHORT = 0xEB,
@@ -47,6 +39,16 @@ enum hook_operation :
 
 	CALL_PTR = 0x15FF,
 	JMP_PTR = 0x25FF, //jmp [imm32], jmp dword ptr, jmp qword ptr
+
+#ifdef X86
+	//not in use
+	CALL_64 = 0,
+	JMP_64 = 0
+#elif X64
+	CALL_64 = 0x08EB0000000215FF,
+	JMP_64 = 0xffffffff000025FF, //bytes for jmp imm64 is 0x0000000025FF
+#endif
+
 
 	//0x70 <= pb[0] && pb[0] <= 0x7F
 	// jo, jno, jb, jnb, jz, jnz, jbe, ja, js, jns, jp, jnp, jl, jnl, jle, jnle
