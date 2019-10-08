@@ -1,4 +1,6 @@
 #pragma once
+
+#ifdef KEYSTONE_ASSEMBLER
 #include "keystone\keystone.h"
 #include <cstdint>
 #include <vector>
@@ -26,9 +28,6 @@ public:
 
 	~assembler() noexcept;
 
-	static const std::string byte_to_string(const std::vector<uint8_t>& bytes, const std::string &separator = " ");
-	static const std::vector<uint8_t> string_to_bytes(const std::string & array_of_bytes);
-
 	std::vector<std::string> get_instructions() const;
 
 	bool insert_instruction(_In_ const std::string &instruction);
@@ -46,6 +45,6 @@ private:
 	assembler::assembler_mode mode;
 	assembler::assembler_syntax syntax;
 	std::vector<std::string> instructions;
-
 };
 
+#endif

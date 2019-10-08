@@ -1,4 +1,7 @@
 #include "disassembler.hpp"
+
+#if defined(CAPSTONE_DISASSEMBLER) || defined(ZYDIS_DISASSEMBLER)
+
 #include "zephyrus.hpp"
 #include <fstream>
 #include <iterator>
@@ -8,17 +11,32 @@
 #include <algorithm>
 #include <iomanip>
 
+#ifdef CAPSTONE_DISASSEMBLER
 #ifdef X86
-#pragma comment (lib, "capstone.lib")
+#pragma comment(lib, "capstone.lib")
 #elif X64
-#pragma comment (lib, "capstone64.lib")
+#pragma comment(lib, "capstone64.lib")
 #else
-#pragma comment (lib, "capstone.lib")
+#pragma comment(lib, "capstone.lib")
+#endif
+#elif ZYDIS_DISASSEMBLER
+#ifdef X86
+#pragma comment(lib, "Zydis.lib")
+#pragma comment(lib, "Zycore.lib")
+#elif X64
+#pragma comment(lib, "Zydis64.lib")
+#pragma comment(lib, "Zycore64.lib")
+#else
+#pragma comment(lib, "Zydis.lib")
+#pragma comment(lib, "Zycore.lib")
+#endif
 #endif
 
 disassembler::disassembler(uint64_t address, const std::vector<uint8_t>& bytecode, disassembler_mode mode)
-	: bytecode(bytecode), mode(mode)
+	: bytecode(bytecode), mode(mode), address(address)
 {
+
+#ifdef CAPSTONE_DISASSEMBLER
 	cs_mode m = CS_MODE_32;
 
 	switch (mode)
@@ -36,95 +54,93 @@ disassembler::disassembler(uint64_t address, const std::vector<uint8_t>& bytecod
 	cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
 	cs_option(handle, CS_OPT_SKIPDATA, CS_OPT_OFF);
 
-	this->instruction_size = cs_disasm(handle, bytecode.data(), bytecode.size(), address, 0, &instructions);
+	this->size = cs_disasm(handle, bytecode.data(), bytecode.size(), address, 0, &array_of_instruction);
+
+	this->instructions.reserve(this->size);
+
+	for (size_t n = 0; n < this->size; ++n)
+	{
+		this->instructions.push_back(this->array_of_instruction[n]);
+		this->instructions_address.push_back(this->array_of_instruction[n].address);
+		this->instructions_bytecode.push_back(std::vector<uint8_t>(this->array_of_instruction[n].bytes, this->array_of_instruction[n].bytes + this->array_of_instruction[n].size));
+	}
+
+#elif ZYDIS_DISASSEMBLER
+	ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
+
+	switch (mode)
+	{
+	case x86:
+		ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_COMPAT_32, ZYDIS_ADDRESS_WIDTH_32);
+		break;
+
+	case x64:
+		ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
+		break;
 }
 
-disassembler::disassembler(uint64_t address, const std::string & filename, disassembler_mode mode)
-{
-	std::ifstream file(filename, std::ios::binary);
-	file.unsetf(std::ios::skipws);
+	this->size = 0;
+	for (size_t n = 0; n < this->bytecode.size();)
+	{
+		ZydisDecodedInstruction instruction;
 
-	file.seekg(0, std::ios::end);
-	std::streampos filesize = file.tellg();
-	file.seekg(0, std::ios::beg);
-	
-	std::vector<uint8_t> binary;
-	binary.reserve(static_cast<size_t>(filesize));
+		ZyanStatus status = ZydisDecoderDecodeBuffer(&decoder, this->bytecode.data() + n, this->bytecode.size() - n, &instruction);
+		if (status != ZYDIS_STATUS_NO_MORE_DATA)
+		{
+			this->instructions.push_back(instruction);
+			this->instructions_address.push_back(this->address + n);
+			this->instructions_bytecode.push_back(std::vector<uint8_t>(this->bytecode.data() + n, this->bytecode.data() + n + instruction.length));
 
-	binary.insert(binary.begin(), std::istream_iterator<uint8_t>(file), std::istream_iterator<uint8_t>());
+			n += instruction.length;
+			this->size += instruction.length;
+		}
 
-	disassembler::disassembler(address, binary, mode);
+		if (!ZYAN_SUCCESS(status))
+		{
+			++n;
+		}
+	}
+#endif
 }
 
 disassembler::~disassembler() noexcept
 {
-	cs_free(instructions, instruction_size);
+#ifdef CAPSTONE_DISASSEMBLER
+	cs_free(array_of_instruction, size);
 	cs_close(&handle);
+#endif
 }
 
-const std::string disassembler::byte_to_string(const std::vector<uint8_t>& bytes, const std::string &separator)
+size_t disassembler::get_size() const
 {
-	return zephyrus::byte_to_string(bytes, separator);
-}
-
-const std::vector<uint8_t> disassembler::string_to_bytes(const std::string & array_of_bytes)
-{
-	return zephyrus::string_to_bytes(array_of_bytes);
-}
-
-disassembler_handle disassembler::get_handle() const
-{
-	return this->handle;
-}
-
-size_t disassembler::size() const
-{
-	return this->instruction_size;
+	return this->size;
 }
 
 std::vector<instruction> disassembler::get_instructions() const
 {
-	std::vector<instruction> instructions;
-	instructions.reserve(this->size());
-
-	for (size_t n = 0; n < this->size(); ++n)
-	{
-		instructions.push_back(this->instructions[n]);
-	}
-
-	return instructions;
+	return this->instructions;
 }
 
-std::string disassembler::get_instructions_string(const std::string & separator, const std::string &begin, const std::string &end)
+std::vector<uint64_t> disassembler::get_instructions_address() const
 {
-	std::stringstream stream;
-
-	for (size_t n = 0; n < this->size(); ++n)
-	{
-		stream << begin << this->instructions[n].mnemonic << ' ' << this->instructions[n].op_str << end;
-		
-		if (n + 1 != this->size())
-		{
-			stream << separator;
-		}
-	}
-	
-	std::string result(stream.str());
-
-	std::transform(result.begin(), result.end(), result.begin(), toupper);
-
-	return result;
+	return this->instructions_address;
 }
 
-std::string disassembler::get_instructions_string(const std::vector<instruction> &instructions, const std::string & separator, const std::string &begin, const std::string &end)
+std::vector<std::vector<uint8_t>> disassembler::get_instructions_bytecode() const
 {
+	return this->instructions_bytecode;
+}
+
+std::string disassembler::get_instructions_string(const std::string& separator, const std::string& begin, const std::string& end) const
+{
+#ifdef CAPSTONE_DISASSEMBLER
 	std::stringstream stream;
 
-	for (size_t n = 0; n < instructions.size(); ++n)
+	for (size_t n = 0; n < this->size; ++n)
 	{
-		stream << begin << instructions.at(n).mnemonic << ' ' << instructions.at(n).op_str << end;
+		stream << begin << this->instructions.at(n).mnemonic << ' ' << this->instructions.at(n).op_str << end;
 
-		if (n + 1 != instructions.size())
+		if (n + 1 != this->size)
 		{
 			stream << separator;
 		}
@@ -135,69 +151,35 @@ std::string disassembler::get_instructions_string(const std::vector<instruction>
 	std::transform(result.begin(), result.end(), result.begin(), toupper);
 
 	return result;
+#elif ZYDIS_DISASSEMBLER
+	char buffer[256];
+	size_t offset = 0;
+	std::stringstream stream;
+
+	for (size_t n = 0; n < this->instructions.size(); ++n)
+	{
+		ZydisFormatterFormatInstruction(&formatter, &this->instructions.at(n), buffer, sizeof(buffer), address + offset);
+		stream << begin << buffer << end;
+
+		offset += this->instructions.at(n).length;
+
+		if (n + 1 != this->size)
+		{
+			stream << separator;
+		}
 }
+
+	std::string result(stream.str());
+
+	std::transform(result.begin(), result.end(), result.begin(), ::toupper);
+
+	return result;
+#endif
+}
+
 std::vector<uint8_t> disassembler::get_bytecode() const
 {
 	return this->bytecode;
 }
 
-std::string disassembler::get_register_name(x86_reg x86_register) const
-{
-	return std::string(cs_reg_name(this->get_handle(), x86_register));
-}
-
-assembly_instruction disassembler::analyze_instruction(const instruction & n) const
-{
-	cs_x86 x86 = n.detail->x86;
-
-	assembly_instruction detail;
-	detail.mnemonic = n.id;
-	detail.operand.reserve(x86.op_count);
-
-	for (uint8_t m = 0; m < x86.op_count; ++m)
-	{
-		detail.operand.push_back(x86.operands[m]);
-	}
-
-	return detail;
-}
-
-x86_reg assembly_instruction::register_operand(cs_x86_op operand) const
-{
-	return operand.reg;
-}
-
-int64_t assembly_instruction::immediate_operand(cs_x86_op operand) const
-{
-	return operand.imm;
-}
-
-double assembly_instruction::floating_point_operand(cs_x86_op operand) const
-{
-	return operand.fp;
-}
-
-x86_op_mem assembly_instruction::mem_operand(cs_x86_op operand) const
-{
-	return operand.mem;
-}
-
-x86_reg assembly_instruction::register_operand(size_t operand_index) const
-{
-	return this->register_operand(this->operand.at(operand_index));
-}
-
-int64_t assembly_instruction::immediate_operand(size_t operand_index) const
-{
-	return this->immediate_operand(this->operand.at(operand_index));
-}
-
-double assembly_instruction::floating_point_operand(size_t operand_index) const
-{
-	return this->floating_point_operand(this->operand.at(operand_index));
-}
-
-x86_op_mem assembly_instruction::mem_operand(size_t operand_index) const
-{
-	return this->mem_operand(this->operand.at(operand_index));
-}
+#endif

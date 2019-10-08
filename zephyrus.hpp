@@ -6,7 +6,11 @@
 #include <functional>
 #include <queue>
 
+#ifdef _WIN64
+#define X64 1
+#elif _WIN32
 #define X86 1
+#endif
 
 #ifdef X86
 typedef uint32_t address_t;

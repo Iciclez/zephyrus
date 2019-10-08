@@ -1,4 +1,6 @@
 #include "assembler.hpp"
+
+#ifdef KEYSTONE_ASSEMBLER
 #include "zephyrus.hpp"
 #include <sstream>
 #include <chrono>
@@ -43,16 +45,6 @@ assembler::~assembler() noexcept
 	ks_close(handle);
 }
 
-const std::string assembler::byte_to_string(const std::vector<uint8_t>& bytes, const std::string &separator)
-{
-	return zephyrus::byte_to_string(bytes, separator);
-}
-
-const std::vector<uint8_t> assembler::string_to_bytes(const std::string & array_of_bytes)
-{
-	return zephyrus::string_to_bytes(array_of_bytes);
-}
-
 std::vector<std::string> assembler::get_instructions() const
 {
 	return this->instructions;
@@ -91,3 +83,5 @@ std::vector<uint8_t> assembler::bytecodes(uint64_t address)
 	this->bytecodes(address, instruction.str(), bytecode);
 	return bytecode;
 }
+
+#endif

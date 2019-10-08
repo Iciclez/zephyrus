@@ -38,10 +38,10 @@
     <ClCompile Include="assembler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="disassembler.cpp">
+    <ClCompile Include="aobscan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="aobscan.cpp">
+    <ClCompile Include="disassembler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

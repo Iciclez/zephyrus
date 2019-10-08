@@ -1,6 +1,4 @@
 #include "zephyrus.hpp"
-#include "assembler.hpp"
-#include "disassembler.hpp"
 
 #include <windows.h>
 #include <sstream>
@@ -9,6 +7,8 @@
 #include <chrono>
 #include <algorithm>
 
+#include "assembler.hpp"
+#include "disassembler.hpp"
 #include "detours.h"
 
 #ifdef X86
@@ -377,6 +377,7 @@ bool zephyrus::sethook(hook_operation operation, address_t address, const std::v
 
 bool zephyrus::assemble(const std::string & assembler_code, std::vector<uint8_t>& bytecode)
 {
+#ifdef KEYSTONE_ASSEMBLER
 	return assembler(std::vector<std::string>(), 
 #ifdef X64
 		assembler::x64
@@ -384,31 +385,44 @@ bool zephyrus::assemble(const std::string & assembler_code, std::vector<uint8_t>
 		assembler::x86
 #endif
 	).bytecodes(reinterpret_cast<uint64_t>(bytecode.data()), assembler_code, bytecode);
+#else
+
+	throw "assembler not defined, failed at zephyrus::assemble";
+
+	return false;
+#endif
 }
 
 size_t zephyrus::getnopcount(address_t address, hook_operation operation)
 {
+#if defined(CAPSTONE_DISASSEMBLER) || defined(ZYDIS_DISASSEMBLER)
 	size_t hooksize = 5 + (operation > 0xff ? 1 : 0);
 
-	std::vector<instruction> instructions = disassembler(static_cast<uint64_t>(address), 
+	std::vector<std::vector<uint8_t>> instructions = disassembler(static_cast<uint64_t>(address), 
 #ifdef X86
 			this->readmemory(address, 12)
 #elif X64
 			this->readmemory(address, 32), disassembler::x64
 #endif
-	).get_instructions();
+	).get_instructions_bytecode();
 
 	for (size_t n = 0, m = 0; n < instructions.size(); ++n)
 	{
-		if (instructions.at(n).size + m < hooksize)
+		if (instructions.at(n).size() + m < hooksize)
 		{
-			m += instructions.at(n).size;
+			m += instructions.at(n).size();
 		}
 		else
 		{
-			return instructions.at(n).size + m - hooksize;
+			return instructions.at(n).size() + m - hooksize;
 		}
 	}
+
+#else
+
+	throw "disassembler not defined, failed at zephyrus::getnopcount";
+
+#endif
 
 	return static_cast<size_t>(-1);
 }
