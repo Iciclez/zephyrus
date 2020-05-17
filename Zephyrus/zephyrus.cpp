@@ -132,7 +132,7 @@ bool zephyrus::writememory(address_t address, const std::vector<uint8_t>& bytes,
 	{
 		if (retain_bytes)
 		{
-			memoryedit[address] = this->readmemory(address, bytes.size());
+			memory_patches[address] = this->readmemory(address, bytes.size());
 		}
 
 		for (size_t i = 0; i < bytes.size(); ++i)
@@ -149,9 +149,8 @@ bool zephyrus::copymemory(address_t address, void *bytes, size_t size, bool reta
 	{
 		if (retain_bytes)
 		{
-			memoryedit[address] = this->readmemory(address, size);
+			memory_patches[address] = this->readmemory(address, size);
 		}
-
 
 		memcpy(reinterpret_cast<void*>(address), bytes, size);
 	});
@@ -182,7 +181,7 @@ bool zephyrus::revertmemory(address_t address)
 {
 	try
 	{
-		return this->writememory(address, memoryedit.at(address), false);
+		return this->writememory(address, memory_patches.at(address), false);
 	}
 	catch (std::exception &)
 	{
@@ -325,7 +324,7 @@ bool zephyrus::sethook(hook_operation operation, address_t address, address_t fu
 	{
 		if (retain_bytes)
 		{
-			memoryedit[address] = this->readmemory(address, size);
+			memory_patches[address] = this->readmemory(address, size);
 		}
 
 		if (operation == JMP_64)

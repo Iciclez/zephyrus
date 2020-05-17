@@ -124,7 +124,7 @@ public:
 
 private:
 	padding_byte padding;
-	std::unordered_map<address_t, std::vector<uint8_t>> memoryedit;
+	std::unordered_map<address_t, std::vector<uint8_t>> memory_patches;
 
 	std::function<bool(address_t, size_t, const std::function<void(void)> &)> pageexecutereadwrite;
 	std::unordered_map<address_t, std::vector<uint8_t>> hook_memory;

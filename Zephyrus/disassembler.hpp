@@ -1,6 +1,6 @@
 #pragma once
 
-//#define CAPSTONE_DISASSEMBLER 1
+#define CAPSTONE_DISASSEMBLER 1
 
 #if defined(CAPSTONE_DISASSEMBLER) || defined(ZYDIS_DISASSEMBLER)
 
