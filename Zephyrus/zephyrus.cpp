@@ -179,11 +179,11 @@ bool zephyrus::writepadding(address_t address, size_t padding_size)
 
 bool zephyrus::revertmemory(address_t address)
 {
-	try
+	if (memory_patches.count(address))
 	{
 		return this->writememory(address, memory_patches.at(address), false);
 	}
-	catch (std::exception &)
+	else
 	{
 		return false;
 	}
