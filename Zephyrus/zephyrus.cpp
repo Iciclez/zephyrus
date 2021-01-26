@@ -249,10 +249,10 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 	for (auto it = this->trampoline_detour.begin(); it != this->trampoline_detour.end(); ++it)
 	{
 		//std::pair<> of relocated_address to our real_address
-		if ((*it).second.first == *address)
+		if (it->second.first == *address)
 		{
 #ifdef X64
-			VirtualFree(reinterpret_cast<void*>((*it).second.second), 0, MEM_RELEASE);
+			VirtualFree(reinterpret_cast<void*>(it->second.second), 0, MEM_RELEASE);
 #elif X86
 			//pair<>::second is unused
 #endif
@@ -263,7 +263,7 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 	for (auto it = this->trampoline_table.begin(); it != this->trampoline_table.end(); ++it)
 	{
 		//std::pair<> of real_address to trampoline bytes
-		if ((*it).first == *address)
+		if (it->first == *address)
 		{
 			this->trampoline_table.erase(it);
 		}
@@ -364,14 +364,14 @@ bool zephyrus::sethook(hook_operation operation, address_t address, const std::s
 
 bool zephyrus::sethook(hook_operation operation, address_t address, const std::vector<std::string>& assembler_code, size_t nop_count, bool retain_bytes)
 {
-	std::string assembler = "";
+	std::stringstream assembler;
 
 	for (const std::string & instruction : assembler_code)
 	{
-		assembler += instruction + "\n";
+		assembler << instruction << '\n';
 	}
 	
-	return this->sethook(operation, address, assembler, nop_count, retain_bytes);
+	return this->sethook(operation, address, assembler.str(), nop_count, retain_bytes);
 }
 
 bool zephyrus::assemble(const std::string & assembler_code, std::vector<uint8_t>& bytecode)

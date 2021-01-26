@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.29306.81
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Zephyrus", "Zephyrus\Zephyrus.vcxproj", "{793180C1-EB96-402F-B90F-82B430F7F1F8}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Zephyrus.Test", "Zephyrus.Test\Zephyrus.Test.vcxproj", "{B4625B58-78D2-4970-8D48-52E88F41FB37}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Zephyrus.Test", "Zephyrus.Test\Zephyrus.Test.vcxproj", "{7A14157D-FF6D-4CF9-A117-BD7D0567296A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,16 +23,19 @@ Global
 		{793180C1-EB96-402F-B90F-82B430F7F1F8}.Release|x64.Build.0 = Release|x64
 		{793180C1-EB96-402F-B90F-82B430F7F1F8}.Release|x86.ActiveCfg = Release|Win32
 		{793180C1-EB96-402F-B90F-82B430F7F1F8}.Release|x86.Build.0 = Release|Win32
-		{B4625B58-78D2-4970-8D48-52E88F41FB37}.Debug|x64.ActiveCfg = Debug|x64
-		{B4625B58-78D2-4970-8D48-52E88F41FB37}.Debug|x64.Build.0 = Debug|x64
-		{B4625B58-78D2-4970-8D48-52E88F41FB37}.Debug|x86.ActiveCfg = Debug|Win32
-		{B4625B58-78D2-4970-8D48-52E88F41FB37}.Debug|x86.Build.0 = Debug|Win32
-		{B4625B58-78D2-4970-8D48-52E88F41FB37}.Release|x64.ActiveCfg = Release|x64
-		{B4625B58-78D2-4970-8D48-52E88F41FB37}.Release|x64.Build.0 = Release|x64
-		{B4625B58-78D2-4970-8D48-52E88F41FB37}.Release|x86.ActiveCfg = Release|Win32
-		{B4625B58-78D2-4970-8D48-52E88F41FB37}.Release|x86.Build.0 = Release|Win32
+		{7A14157D-FF6D-4CF9-A117-BD7D0567296A}.Debug|x64.ActiveCfg = Debug|x64
+		{7A14157D-FF6D-4CF9-A117-BD7D0567296A}.Debug|x64.Build.0 = Debug|x64
+		{7A14157D-FF6D-4CF9-A117-BD7D0567296A}.Debug|x86.ActiveCfg = Debug|Win32
+		{7A14157D-FF6D-4CF9-A117-BD7D0567296A}.Debug|x86.Build.0 = Debug|Win32
+		{7A14157D-FF6D-4CF9-A117-BD7D0567296A}.Release|x64.ActiveCfg = Release|x64
+		{7A14157D-FF6D-4CF9-A117-BD7D0567296A}.Release|x64.Build.0 = Release|x64
+		{7A14157D-FF6D-4CF9-A117-BD7D0567296A}.Release|x86.ActiveCfg = Release|Win32
+		{7A14157D-FF6D-4CF9-A117-BD7D0567296A}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7982A1B1-2FE6-444C-8BDE-9D01D3DE7DAE}
 	EndGlobalSection
 EndGlobal

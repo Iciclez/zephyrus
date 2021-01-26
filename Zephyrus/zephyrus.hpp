@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <functional>
 #include <queue>
+#include <windows.h>
 
 #ifdef _WIN64
 #define X64 1

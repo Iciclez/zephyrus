@@ -1,5 +1,7 @@
 #pragma once
 
+#define KEYSTONE_ASSEMBLER 1
+
 #ifdef KEYSTONE_ASSEMBLER
 #include "keystone\keystone.h"
 #include <cstdint>
