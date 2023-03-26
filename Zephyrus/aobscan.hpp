@@ -9,10 +9,6 @@ public:
 	aobscan(const std::string &pattern, void *memory_start = 0, size_t memory_size = 0, uint32_t result = 1);
 	~aobscan() noexcept;
 
-	const std::vector<uint8_t> &get_bytearray();
-	const std::vector<uint8_t> &get_mask();
-	const std::string &get_pattern();
-
 	//qword or dword
 	template <typename T> T address();
 

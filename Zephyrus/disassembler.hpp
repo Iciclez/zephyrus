@@ -1,21 +1,9 @@
 #pragma once
 
-//#define ZYDIS_DISASSEMBLER 1
-#define CAPSTONE_DISASSEMBLER
+#define ZYDIS_STATIC_BUILD
+#define ZYCORE_STATIC_BUILD
 
-#if defined(CAPSTONE_DISASSEMBLER) || defined(ZYDIS_DISASSEMBLER)
-
-#ifdef CAPSTONE_DISASSEMBLER
-#include "capstone\capstone.h"
-
-typedef cs_insn instruction;
-#elif ZYDIS_DISASSEMBLER
-#define ZYDIS_STATIC_DEFINE
-#define ZYCORE_STATIC_DEFINE
-#include <Zydis/Zydis.h>
-
-typedef ZydisDecodedInstruction instruction;
-#endif
+#include "Zydis.h"
 
 #include <cstdint>
 #include <vector>
@@ -37,32 +25,19 @@ public:
 
 	size_t get_size() const;
 
-	std::vector<instruction> get_instructions() const;
+	std::vector<ZydisDisassembledInstruction> get_instructions() const;
 	std::vector<uint64_t> get_instructions_address() const;
 	std::vector<std::vector<uint8_t>> get_instructions_bytecode() const;
 	std::string get_instructions_string(const std::string& separator = "\n", const std::string& begin = "", const std::string& end = "") const;
 
 	std::vector<uint8_t> get_bytecode() const;
 
-#ifdef CAPSTONE_DISASSEMBLER
-	csh handle;
-#endif
 private:
-
-#ifdef CAPSTONE_DISASSEMBLER
-	instruction *array_of_instruction;
-#elif ZYDIS_DISASSEMBLER
-	ZydisDecoder decoder;
-	ZydisFormatter formatter;
-#endif
-
 	uint64_t address;
 	size_t size;
-	std::vector<instruction> instructions;
+	std::vector<ZydisDisassembledInstruction> instructions;
 	std::vector<uint64_t> instructions_address;
 	std::vector<std::vector<uint8_t>> instructions_bytecode;
 	std::vector<uint8_t> bytecode;
 	disassembler_mode mode;
 };
-
-#endif

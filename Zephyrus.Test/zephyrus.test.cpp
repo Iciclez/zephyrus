@@ -35,7 +35,7 @@ namespace zephyrus_test
 		{
 			uint32_t n = 0x12345678;
 
-			std::vector<uint8_t> actual = zephyrus().readmemory(reinterpret_cast<address_t>(&n), sizeof(n));
+			std::vector<uint8_t> actual = zephyrus().readmemory(reinterpret_cast<uintptr_t>(&n), sizeof(n));
 
 			Assert::AreEqual(sizeof(n), actual.size());
 			Assert::AreEqual<uint8_t>(0x78, actual.at(0));
@@ -48,7 +48,7 @@ namespace zephyrus_test
 		{
 			uint32_t n = 0xdeadbeef;
 
-			Assert::IsTrue(zephyrus().writememory(reinterpret_cast<address_t>(&n), { 0x78, 0x56, 0x34, 0x12 }, false));
+			Assert::IsTrue(zephyrus().writememory(reinterpret_cast<uintptr_t>(&n), { 0x78, 0x56, 0x34, 0x12 }, false));
 			Assert::AreEqual<uint32_t>(0x12345678, n);
 		}
 
@@ -56,7 +56,7 @@ namespace zephyrus_test
 		{
 			uint32_t n = 0xdeadbeef;
 
-			Assert::IsTrue(zephyrus().writememory(reinterpret_cast<address_t>(&n), "78 56 34 12", false));
+			Assert::IsTrue(zephyrus().writememory(reinterpret_cast<uintptr_t>(&n), "78 56 34 12", false));
 			Assert::AreEqual<uint32_t>(0x12345678, n);
 		}
 
@@ -64,7 +64,7 @@ namespace zephyrus_test
 		{
 			uint32_t n = 0xdeadbeef;
 
-			Assert::IsTrue(zephyrus().copymemory(reinterpret_cast<address_t>(&n), "\x78\x56\x34\x12", sizeof(n)));
+			Assert::IsTrue(zephyrus().copymemory(reinterpret_cast<uintptr_t>(&n), "\x78\x56\x34\x12", sizeof(n)));
 			Assert::AreEqual<uint32_t>(0x12345678, n);
 		}
 
@@ -72,7 +72,7 @@ namespace zephyrus_test
 		{
 			uint32_t n = 0xdeadbeef;
 
-			Assert::IsTrue(zephyrus().writeassembler(reinterpret_cast<address_t>(&n), "xor eax, eax", false));
+			Assert::IsTrue(zephyrus().writeassembler(reinterpret_cast<uintptr_t>(&n), "xor eax, eax", false));
 			Assert::AreEqual<uint32_t>(0xdeadc031, n);
 		}
 
@@ -80,7 +80,7 @@ namespace zephyrus_test
 		{
 			uint32_t n = 0xdeadbeef;
 
-			Assert::IsTrue(zephyrus().writepadding(reinterpret_cast<address_t>(&n), 3));
+			Assert::IsTrue(zephyrus().writepadding(reinterpret_cast<uintptr_t>(&n), 3));
 			Assert::AreEqual<uint32_t>(0xde909090, n);
 		}
 
@@ -89,9 +89,9 @@ namespace zephyrus_test
 			uint32_t n = 0xdeadbeef;
 			zephyrus z;
 			
-			z.writememory(reinterpret_cast<address_t>(&n), std::vector<uint8_t>{ 0x78, 0x56, 0x34, 0x12 });
+			z.writememory(reinterpret_cast<uintptr_t>(&n), std::vector<uint8_t>{ 0x78, 0x56, 0x34, 0x12 });
 
-			Assert::IsTrue(z.revertmemory(reinterpret_cast<address_t>(&n)));
+			Assert::IsTrue(z.revertmemory(reinterpret_cast<uintptr_t>(&n)));
 			Assert::AreEqual<uint32_t>(0xdeadbeef, n);
 		}
 
@@ -162,52 +162,47 @@ namespace zephyrus_test
 			zephyrus z;
 			uint64_t n = 0x12345678deadbeef;
 
-			Assert::IsTrue(z.sethook(JMP, reinterpret_cast<address_t>(&n), reinterpret_cast<address_t>(zephyrus_test_function), 0, false));
+			Assert::IsTrue(z.sethook(JMP, reinterpret_cast<uintptr_t>(&n), reinterpret_cast<uintptr_t>(zephyrus_test_function), 0, false));
 			Assert::AreEqual<uint8_t>(JMP, n & 0xff);
 
-			disassembler memory(reinterpret_cast<uint64_t>(&n), z.readmemory(reinterpret_cast<address_t>(&n), 5));
+			disassembler memory(reinterpret_cast<uint64_t>(&n), z.readmemory(reinterpret_cast<uintptr_t>(&n), 5));
 
-#ifdef CAPSTONE_DISASSEMBLER
-			Assert::AreEqual<int32_t>(X86_OP_IMM, memory.get_instructions().at(0).detail->x86.operands[0].type);
-			Assert::AreEqual(reinterpret_cast<int64_t>(zephyrus_test_function), memory.get_instructions().at(0).detail->x86.operands[0].imm);
-#elif ZYDIS_DISASSEMBLER
-			Assert::AreEqual<int32_t>(ZydisMnemonic::ZYDIS_MNEMONIC_JMP, memory.get_instructions().at(0).mnemonic);
+			Assert::AreEqual<int32_t>(ZydisMnemonic::ZYDIS_MNEMONIC_JMP, memory.get_instructions().at(0).info.mnemonic);
 			Assert::AreEqual<int32_t>(ZydisOperandType::ZYDIS_OPERAND_TYPE_IMMEDIATE, memory.get_instructions().at(0).operands[0].type);
 
 			uint64_t zephyrus_test_function_address;
-			Assert::AreEqual(ZYAN_STATUS_SUCCESS, ZydisCalcAbsoluteAddress(&memory.get_instructions().at(0), &memory.get_instructions().at(0).operands[0], reinterpret_cast<uint64_t>(&n), &zephyrus_test_function_address));
+			Assert::AreEqual(ZYAN_STATUS_SUCCESS, ZydisCalcAbsoluteAddress(&memory.get_instructions().at(0).info, &memory.get_instructions().at(0).operands[0], reinterpret_cast<uint64_t>(&n), &zephyrus_test_function_address));
 			Assert::AreEqual(reinterpret_cast<uint64_t>(zephyrus_test_function), zephyrus_test_function_address);
 
-			Assert::AreEqual<uint64_t>(reinterpret_cast<uint64_t>(zephyrus_test_function), reinterpret_cast<uint64_t>(&n) + memory.get_instructions().at(0).length + memory.get_instructions().at(0).operands[0].imm.value.s);
-#endif
+			Assert::AreEqual<uint64_t>(reinterpret_cast<uint64_t>(zephyrus_test_function), reinterpret_cast<uint64_t>(&n) + memory.get_instructions().at(0).info.length + memory.get_instructions().at(0).operands[0].imm.value.s);
 #endif
 		}
 
-		TEST_METHOD(test_writedata)
+		TEST_METHOD(test_write)
 		{
 			uint64_t n = 0x12345678deadbeef;
 			
-			Assert::IsTrue(zephyrus().writedata<uint8_t>(reinterpret_cast<address_t>(&n), 0x90));
+			Assert::IsTrue(zephyrus().write<uint8_t>(reinterpret_cast<uintptr_t>(&n), 0x90));
 			Assert::AreEqual<uint64_t>(0x12345678deadbe90, n);
 			
-			Assert::IsTrue(zephyrus().writedata<uint16_t>(reinterpret_cast<address_t>(&n), 0xbaad));
+			Assert::IsTrue(zephyrus().write<uint16_t>(reinterpret_cast<uintptr_t>(&n), 0xbaad));
 			Assert::AreEqual<uint64_t>(0x12345678deadbaad, n);
 
-			Assert::IsTrue(zephyrus().writedata<uint32_t>(reinterpret_cast<address_t>(&n), 0xdeadbeef));
+			Assert::IsTrue(zephyrus().write<uint32_t>(reinterpret_cast<uintptr_t>(&n), 0xdeadbeef));
 			Assert::AreEqual<uint64_t>(0x12345678deadbeef, n);
 
-			Assert::IsTrue(zephyrus().writedata<uint64_t>(reinterpret_cast<address_t>(&n), 0xdeadbeef12345678));
+			Assert::IsTrue(zephyrus().write<uint64_t>(reinterpret_cast<uintptr_t>(&n), 0xdeadbeef12345678));
 			Assert::AreEqual<uint64_t>(0xdeadbeef12345678, n);
 		}
 
-		TEST_METHOD(test_readdata)
+		TEST_METHOD(test_read)
 		{
 			uint64_t n = 0x12345678deadbeef;
 
-			Assert::AreEqual<uint8_t>(0xef, zephyrus().readdata<uint8_t>(reinterpret_cast<address_t>(&n)));
-			Assert::AreEqual<uint32_t>(0xbeef, zephyrus().readdata<uint16_t>(reinterpret_cast<address_t>(&n))); //ok
-			Assert::AreEqual<uint32_t>(0xdeadbeef, zephyrus().readdata<uint32_t>(reinterpret_cast<address_t>(&n)));
-			Assert::AreEqual<uint64_t>(0x12345678deadbeef, zephyrus().readdata<uint64_t>(reinterpret_cast<address_t>(&n)));
+			Assert::AreEqual<uint8_t>(0xef, zephyrus().read<uint8_t>(reinterpret_cast<uintptr_t>(&n)));
+			Assert::AreEqual<uint32_t>(0xbeef, zephyrus().read<uint16_t>(reinterpret_cast<uintptr_t>(&n))); //ok
+			Assert::AreEqual<uint32_t>(0xdeadbeef, zephyrus().read<uint32_t>(reinterpret_cast<uintptr_t>(&n)));
+			Assert::AreEqual<uint64_t>(0x12345678deadbeef, zephyrus().read<uint64_t>(reinterpret_cast<uintptr_t>(&n)));
 		}
 
 
@@ -228,16 +223,16 @@ namespace zephyrus_test
 			test_struct obj = { 0x33, 0x9090, 0xbaadf00d, 0xdeadbeefdeadbeef };
 			test_struct* ptr = &obj;
 
-			Assert::IsTrue(zephyrus::writepointer<uint8_t>(reinterpret_cast<address_t>(&ptr), offsetof(struct test_struct, a), 0x88));
+			Assert::IsTrue(zephyrus::writepointer<uint8_t>(reinterpret_cast<uintptr_t>(&ptr), offsetof(struct test_struct, a), 0x88));
 			Assert::AreEqual<uint8_t>(0x88, ptr->a);
 
-			Assert::IsTrue(zephyrus::writepointer<uint16_t>(reinterpret_cast<address_t>(&ptr), offsetof(struct test_struct, b), 0xefef));
+			Assert::IsTrue(zephyrus::writepointer<uint16_t>(reinterpret_cast<uintptr_t>(&ptr), offsetof(struct test_struct, b), 0xefef));
 			Assert::AreEqual<uint32_t>(0xefef, ptr->b);
 
-			Assert::IsTrue(zephyrus::writepointer<uint32_t>(reinterpret_cast<address_t>(&ptr), offsetof(struct test_struct, c), 0x45454545));
+			Assert::IsTrue(zephyrus::writepointer<uint32_t>(reinterpret_cast<uintptr_t>(&ptr), offsetof(struct test_struct, c), 0x45454545));
 			Assert::AreEqual<uint32_t>(0x45454545, ptr->c);
 			
-			Assert::IsTrue(zephyrus::writepointer<uint64_t>(reinterpret_cast<address_t>(&ptr), offsetof(struct test_struct, d), 0x1234567887654321));
+			Assert::IsTrue(zephyrus::writepointer<uint64_t>(reinterpret_cast<uintptr_t>(&ptr), offsetof(struct test_struct, d), 0x1234567887654321));
 			Assert::AreEqual<uint64_t>(0x1234567887654321, ptr->d);
 		}
 
@@ -258,10 +253,10 @@ namespace zephyrus_test
 			test_struct obj = { 0x33, 0x9090, 0xbaadf00d, 0xdeadbeefdeadbeef };
 			test_struct* ptr = &obj;
 
-			Assert::AreEqual<uint8_t>(ptr->a, zephyrus::readpointer<uint8_t>(reinterpret_cast<address_t>(&ptr), offsetof(struct test_struct, a)));
-			Assert::AreEqual<uint32_t>(ptr->b, zephyrus::readpointer<uint16_t>(reinterpret_cast<address_t>(&ptr), offsetof(struct test_struct, b)));
-			Assert::AreEqual<uint32_t>(ptr->c, zephyrus::readpointer<uint32_t>(reinterpret_cast<address_t>(&ptr), offsetof(struct test_struct, c)));
-			Assert::AreEqual<uint64_t>(ptr->d, zephyrus::readpointer<uint64_t>(reinterpret_cast<address_t>(&ptr), offsetof(struct test_struct, d)));
+			Assert::AreEqual<uint8_t>(ptr->a, zephyrus::readpointer<uint8_t>(reinterpret_cast<uintptr_t>(&ptr), offsetof(struct test_struct, a)));
+			Assert::AreEqual<uint32_t>(ptr->b, zephyrus::readpointer<uint16_t>(reinterpret_cast<uintptr_t>(&ptr), offsetof(struct test_struct, b)));
+			Assert::AreEqual<uint32_t>(ptr->c, zephyrus::readpointer<uint32_t>(reinterpret_cast<uintptr_t>(&ptr), offsetof(struct test_struct, c)));
+			Assert::AreEqual<uint64_t>(ptr->d, zephyrus::readpointer<uint64_t>(reinterpret_cast<uintptr_t>(&ptr), offsetof(struct test_struct, d)));
 		}
 
 		TEST_METHOD(test_writemultilevelpointer)
@@ -309,23 +304,23 @@ namespace zephyrus_test
 			test_struct obj = { 0x33, 0x9090, &v2, &inner_obj, 0xdeadbeefdeadbeef };
 			test_struct* ptr = &obj;
 
-			Assert::IsTrue(zephyrus::writemultilevelpointer<uint8_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, a) }), 0x88));
+			Assert::IsTrue(zephyrus::writemultilevelpointer<uint8_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, a) }), 0x88));
 			Assert::AreEqual<uint8_t>(0x88, ptr->a);
 
-			Assert::IsTrue(zephyrus::writemultilevelpointer<uint16_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, b) }), 0xefef));
+			Assert::IsTrue(zephyrus::writemultilevelpointer<uint16_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, b) }), 0xefef));
 			Assert::AreEqual<uint32_t>(0xefef, ptr->b);
 
-			Assert::IsTrue(zephyrus::writemultilevelpointer<uint32_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, c), 0 }), 0x45454545));
+			Assert::IsTrue(zephyrus::writemultilevelpointer<uint32_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, c), 0 }), 0x45454545));
 			Assert::AreEqual<uint32_t>(0x45454545, *ptr->c);
 
-			Assert::IsTrue(zephyrus::writemultilevelpointer<uint32_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, x) }), 0x11111111));
+			Assert::IsTrue(zephyrus::writemultilevelpointer<uint32_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, x) }), 0x11111111));
 			Assert::AreEqual<uint32_t>(0x11111111, ptr->d->x);
-			Assert::IsTrue(zephyrus::writemultilevelpointer<uint32_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, y), 0 }), 0x77777777));
+			Assert::IsTrue(zephyrus::writemultilevelpointer<uint32_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, y), 0 }), 0x77777777));
 			Assert::AreEqual<uint32_t>(0x77777777, *ptr->d->y);
-			Assert::IsTrue(zephyrus::writemultilevelpointer<uint32_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, z) }), 0x66666666));
+			Assert::IsTrue(zephyrus::writemultilevelpointer<uint32_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, z) }), 0x66666666));
 			Assert::AreEqual<uint32_t>(0x66666666, ptr->d->z);
 
-			Assert::IsTrue(zephyrus::writemultilevelpointer<uint64_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, e) }), 0x1234567887654321));
+			Assert::IsTrue(zephyrus::writemultilevelpointer<uint64_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, e) }), 0x1234567887654321));
 			Assert::AreEqual<uint64_t>(0x1234567887654321, ptr->e);
 		}
 
@@ -374,15 +369,15 @@ namespace zephyrus_test
 			test_struct obj = { 0x33, 0x9090, &v2, &inner_obj, 0xdeadbeefdeadbeef };
 			test_struct* ptr = &obj;
 
-			Assert::AreEqual<uint8_t>(ptr->a, zephyrus::readmultilevelpointer<uint8_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, a) })));
-			Assert::AreEqual<uint32_t>(ptr->b, zephyrus::readmultilevelpointer<uint16_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, b) })));
-			Assert::AreEqual<uint32_t>(*ptr->c, zephyrus::readmultilevelpointer<uint32_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, c), 0 })));
+			Assert::AreEqual<uint8_t>(ptr->a, zephyrus::readmultilevelpointer<uint8_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, a) })));
+			Assert::AreEqual<uint32_t>(ptr->b, zephyrus::readmultilevelpointer<uint16_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, b) })));
+			Assert::AreEqual<uint32_t>(*ptr->c, zephyrus::readmultilevelpointer<uint32_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, c), 0 })));
 			
-			Assert::AreEqual<uint32_t>(ptr->d->x, zephyrus::readmultilevelpointer<uint32_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, x) })));
-			Assert::AreEqual<uint32_t>(*ptr->d->y, zephyrus::readmultilevelpointer<uint32_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, y), 0 })));
-			Assert::AreEqual<uint32_t>(ptr->d->z, zephyrus::readmultilevelpointer<uint32_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, z) })));
+			Assert::AreEqual<uint32_t>(ptr->d->x, zephyrus::readmultilevelpointer<uint32_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, x) })));
+			Assert::AreEqual<uint32_t>(*ptr->d->y, zephyrus::readmultilevelpointer<uint32_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, y), 0 })));
+			Assert::AreEqual<uint32_t>(ptr->d->z, zephyrus::readmultilevelpointer<uint32_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, d), offsetof(struct test_struct_inner, z) })));
 
-			Assert::AreEqual<uint64_t>(ptr->e, zephyrus::readmultilevelpointer<uint64_t>(reinterpret_cast<address_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, e) })));
+			Assert::AreEqual<uint64_t>(ptr->e, zephyrus::readmultilevelpointer<uint64_t>(reinterpret_cast<uintptr_t>(&ptr), std::queue<size_t>({ offsetof(struct test_struct, e) })));
 		
 		}
 
@@ -394,8 +389,8 @@ namespace zephyrus_test
 			};
 
 			
-			Assert::AreEqual<address_t>(reinterpret_cast<address_t>(haystack.data()) + 5, aobscan("7b ?? 57 07 ?? bc ?? c7", haystack.data(), haystack.size()).address<address_t>());
-			Assert::AreEqual<address_t>(0, aobscan("7b ?? 57 33 07 ?? bc ?? c7", haystack.data(), haystack.size()).address<address_t>());
+			Assert::AreEqual<uintptr_t>(reinterpret_cast<uintptr_t>(haystack.data()) + 5, aobscan("7b ?? 57 07 ?? bc ?? c7", haystack.data(), haystack.size()).address<uintptr_t>());
+			Assert::AreEqual<uintptr_t>(0, aobscan("7b ?? 57 33 07 ?? bc ?? c7", haystack.data(), haystack.size()).address<uintptr_t>());
 		}
 
 		TEST_METHOD(test_string_to_bytes)

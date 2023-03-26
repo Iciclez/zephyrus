@@ -50,18 +50,3 @@ aobscan::aobscan(const std::string & pattern, void *memory_start, size_t memory_
 aobscan::~aobscan() noexcept
 {
 }
-
-const std::vector<uint8_t>& aobscan::get_bytearray()
-{
-	return this->bytearray;
-}
-
-const std::vector<uint8_t>& aobscan::get_mask()
-{
-	return this->mask;
-}
-
-const std::string & aobscan::get_pattern()
-{
-	return this->pattern;
-}

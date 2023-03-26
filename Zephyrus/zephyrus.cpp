@@ -22,7 +22,7 @@
 zephyrus::zephyrus(padding_byte padding)
 	: padding(padding)
 {
-	this->pageexecutereadwrite = [&](address_t address, size_t size, const std::function<void(void)> &function)
+	this->pageexecutereadwrite = [&](uintptr_t address, size_t size, const std::function<void(void)> &function)
 	{
 		DWORD protect = 0;
 
@@ -73,7 +73,7 @@ zephyrus::~zephyrus() noexcept
 {
 }
 
-bool zephyrus::pagereadwriteaccess(address_t address)
+bool zephyrus::pagereadwriteaccess(uintptr_t address)
 {
 	MEMORY_BASIC_INFORMATION mbi = { 0 };
 
@@ -95,13 +95,13 @@ bool zephyrus::pagereadwriteaccess(address_t address)
 	return true;
 }
 
-uint32_t zephyrus::protectvirtualmemory(address_t address, size_t size)
+uint32_t zephyrus::protectvirtualmemory(uintptr_t address, size_t size)
 {
 	DWORD protection = 0;
 	return VirtualProtect(reinterpret_cast<void*>(address), size, PAGE_EXECUTE_READWRITE, &protection) ? protection : 0;
 }
 
-const std::vector<uint8_t> zephyrus::readmemory(address_t address, size_t size)
+const std::vector<uint8_t> zephyrus::readmemory(uintptr_t address, size_t size)
 {
 	std::vector<uint8_t> memory;
 	memory.reserve(size);
@@ -117,7 +117,7 @@ const std::vector<uint8_t> zephyrus::readmemory(address_t address, size_t size)
 	return memory;
 }
 
-bool zephyrus::writememory(address_t address, const std::string & array_of_bytes, size_t padding_size, bool retain_bytes)
+bool zephyrus::writememory(uintptr_t address, const std::string & array_of_bytes, size_t padding_size, bool retain_bytes)
 {
 	std::vector<uint8_t> data = string_to_bytes(array_of_bytes);
 	
@@ -126,7 +126,7 @@ bool zephyrus::writememory(address_t address, const std::string & array_of_bytes
 	return this->writememory(address, data, retain_bytes);
 }
 
-bool zephyrus::writememory(address_t address, const std::vector<uint8_t>& bytes, bool retain_bytes)
+bool zephyrus::writememory(uintptr_t address, const std::vector<uint8_t>& bytes, bool retain_bytes)
 {
 	return this->pageexecutereadwrite(address, bytes.size(), [&]()
 	{
@@ -143,7 +143,7 @@ bool zephyrus::writememory(address_t address, const std::vector<uint8_t>& bytes,
 	});
 }
 
-bool zephyrus::copymemory(address_t address, void *bytes, size_t size, bool retain_bytes)
+bool zephyrus::copymemory(uintptr_t address, void *bytes, size_t size, bool retain_bytes)
 {
 	return this->pageexecutereadwrite(address, size, [&]()
 	{
@@ -156,7 +156,7 @@ bool zephyrus::copymemory(address_t address, void *bytes, size_t size, bool reta
 	});
 }
 
-bool zephyrus::writeassembler(address_t address, const std::string & assembler_code, bool retain_bytes)
+bool zephyrus::writeassembler(uintptr_t address, const std::string & assembler_code, bool retain_bytes)
 {
 	std::vector<uint8_t> bytecodes;
 
@@ -168,7 +168,7 @@ bool zephyrus::writeassembler(address_t address, const std::string & assembler_c
 	return this->writememory(address, bytecodes, retain_bytes);
 }
 
-bool zephyrus::writepadding(address_t address, size_t padding_size)
+bool zephyrus::writepadding(uintptr_t address, size_t padding_size)
 {
 	std::vector<uint8_t> padding_bytes;
 
@@ -177,7 +177,7 @@ bool zephyrus::writepadding(address_t address, size_t padding_size)
 	return this->writememory(address, padding_bytes, false);
 }
 
-bool zephyrus::revertmemory(address_t address)
+bool zephyrus::revertmemory(uintptr_t address)
 {
 	if (memory_patches.count(address))
 	{
@@ -189,7 +189,7 @@ bool zephyrus::revertmemory(address_t address)
 	}
 }
 
-bool zephyrus::redirect(hook_operation operation, address_t * address, address_t function, bool enable)
+bool zephyrus::redirect(hook_operation operation, uintptr_t * address, uintptr_t function, bool enable)
 {
 	if (enable)
 	{
@@ -213,15 +213,15 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 #elif X64
 			JMP_64
 #endif
-			, reinterpret_cast<address_t>(this->trampoline_table[*address].data() + this->trampoline_table[*address].size() - JMP_SIZE),
+			, reinterpret_cast<uintptr_t>(this->trampoline_table[*address].data() + this->trampoline_table[*address].size() - JMP_SIZE),
 			*address + size, 0, false);
 
 		//enable page_readwrite_execute in trampoline
-		this->protectvirtualmemory(reinterpret_cast<address_t>(this->trampoline_table[*address].data()), this->trampoline_table[*address].size());
+		this->protectvirtualmemory(reinterpret_cast<uintptr_t>(this->trampoline_table[*address].data()), this->trampoline_table[*address].size());
 
 		//relocate address ptr to trampoline function
-		this->trampoline_detour[reinterpret_cast<address_t>(this->trampoline_table[*address].data())] = std::make_pair(*address, 0);
-		*address = reinterpret_cast<address_t>(this->trampoline_table[*address].data());
+		this->trampoline_detour[reinterpret_cast<uintptr_t>(this->trampoline_table[*address].data())] = std::make_pair(*address, 0);
+		*address = reinterpret_cast<uintptr_t>(this->trampoline_table[*address].data());
 
 #ifdef X86
 
@@ -229,7 +229,7 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 
 #elif X64
 		
-		this->trampoline_detour[*address].second = reinterpret_cast<address_t>(
+		this->trampoline_detour[*address].second = reinterpret_cast<uintptr_t>(
 			DetourAllocateRegionWithinJumpBounds(
 					reinterpret_cast<void*>(this->trampoline_detour[*address].first), 
 					reinterpret_cast<PDWORD>(&JMP_SIZE)
@@ -272,7 +272,7 @@ bool zephyrus::redirect(hook_operation operation, address_t * address, address_t
 	return this->revertmemory(*address);
 }
 
-bool zephyrus::redirect(address_t * address, address_t function, bool enable)
+bool zephyrus::redirect(uintptr_t * address, uintptr_t function, bool enable)
 {
 	return this->redirect(JMP, address, function, enable);
 }
@@ -299,7 +299,7 @@ bool zephyrus::detour(void ** from, void *to, bool enable)
 	return DetourTransactionCommit() == NO_ERROR;
 }
 
-bool zephyrus::sethook(hook_operation operation, address_t address, address_t function, size_t nop_count, bool retain_bytes)
+bool zephyrus::sethook(hook_operation operation, uintptr_t address, uintptr_t function, size_t nop_count, bool retain_bytes)
 {
 	if (nop_count == -1)
 	{
@@ -329,13 +329,13 @@ bool zephyrus::sethook(hook_operation operation, address_t address, address_t fu
 
 		if (operation == JMP_64)
 		{
-			*reinterpret_cast<address_t*>(address) = 0x0000000025FF;
-			*reinterpret_cast<address_t*>(address + 6) = function;
+			*reinterpret_cast<uintptr_t*>(address) = 0x0000000025FF;
+			*reinterpret_cast<uintptr_t*>(address + 6) = function;
 		}
 		else if (operation == CALL_64)
 		{
-			*reinterpret_cast<address_t*>(address) = CALL_64;
-			*reinterpret_cast<address_t*>(address + 8) = function;
+			*reinterpret_cast<uintptr_t*>(address) = CALL_64;
+			*reinterpret_cast<uintptr_t*>(address + 8) = function;
 		}
 		else
 		{
@@ -348,7 +348,7 @@ bool zephyrus::sethook(hook_operation operation, address_t address, address_t fu
 	});
 }
 
-bool zephyrus::sethook(hook_operation operation, address_t address, const std::string & assembler_code, size_t nop_count, bool retain_bytes)
+bool zephyrus::sethook(hook_operation operation, uintptr_t address, const std::string & assembler_code, size_t nop_count, bool retain_bytes)
 {
 	std::vector<uint8_t> bytecodes;
 	
@@ -359,10 +359,10 @@ bool zephyrus::sethook(hook_operation operation, address_t address, const std::s
 
 	this->hook_memory[address] = bytecodes;
 
-	return this->sethook(operation, address, reinterpret_cast<address_t>(this->hook_memory[address].data()), nop_count, retain_bytes);
+	return this->sethook(operation, address, reinterpret_cast<uintptr_t>(this->hook_memory[address].data()), nop_count, retain_bytes);
 }
 
-bool zephyrus::sethook(hook_operation operation, address_t address, const std::vector<std::string>& assembler_code, size_t nop_count, bool retain_bytes)
+bool zephyrus::sethook(hook_operation operation, uintptr_t address, const std::vector<std::string>& assembler_code, size_t nop_count, bool retain_bytes)
 {
 	std::stringstream assembler;
 
@@ -392,9 +392,8 @@ bool zephyrus::assemble(const std::string & assembler_code, std::vector<uint8_t>
 #endif
 }
 
-size_t zephyrus::getnopcount(address_t address, hook_operation operation)
+size_t zephyrus::getnopcount(uintptr_t address, hook_operation operation)
 {
-#if defined(CAPSTONE_DISASSEMBLER) || defined(ZYDIS_DISASSEMBLER)
 	size_t hooksize = 5 + (operation > 0xff ? 1 : 0);
 
 	std::vector<std::vector<uint8_t>> instructions = disassembler(static_cast<uint64_t>(address), 
@@ -416,12 +415,6 @@ size_t zephyrus::getnopcount(address_t address, hook_operation operation)
 			return instructions.at(n).size() + m - hooksize;
 		}
 	}
-
-#else
-
-	throw "disassembler not defined, failed at zephyrus::getnopcount";
-
-#endif
 
 	return static_cast<size_t>(-1);
 }
@@ -487,7 +480,7 @@ const std::vector<uint8_t> zephyrus::string_to_bytes(const std::string & array_o
 	return bytes;
 }
 
-address_t zephyrus::getexportedfunctionaddress(const std::string & module_name, const std::string & function_name)
+uintptr_t zephyrus::getexportedfunctionaddress(const std::string & module_name, const std::string & function_name)
 {
 	HMODULE module = GetModuleHandleA(module_name.c_str());
 	if (!module)
@@ -499,5 +492,5 @@ address_t zephyrus::getexportedfunctionaddress(const std::string & module_name, 
 		}
 	}
 
-	return reinterpret_cast<address_t>(GetProcAddress(module, function_name.c_str()));
+	return reinterpret_cast<uintptr_t>(GetProcAddress(module, function_name.c_str()));
 }

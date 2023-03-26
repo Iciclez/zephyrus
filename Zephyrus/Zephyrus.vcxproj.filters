@@ -30,6 +30,9 @@
     <ClInclude Include="disassembler.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Zydis.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="zephyrus.cpp">
@@ -42,6 +45,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="disassembler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Zydis.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
