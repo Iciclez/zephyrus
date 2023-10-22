@@ -396,23 +396,23 @@ size_t zephyrus::getnopcount(uintptr_t address, hook_operation operation)
 {
 	size_t hooksize = 5 + (operation > 0xff ? 1 : 0);
 
-	std::vector<std::vector<uint8_t>> instructions = disassembler(static_cast<uint64_t>(address), 
+	std::vector<std::pair<uint64_t, std::vector<uint8_t>>> instructions = disassembler(static_cast<uint64_t>(address), 
 #ifdef X86
 			this->readmemory(address, 12)
 #elif X64
 			this->readmemory(address, 32), disassembler::x64
 #endif
-	).get_instructions_bytecode();
+	).get_bytecode();
 
 	for (size_t n = 0, m = 0; n < instructions.size(); ++n)
 	{
-		if (instructions.at(n).size() + m < hooksize)
+		if (instructions.at(n).second.size() + m < hooksize)
 		{
-			m += instructions.at(n).size();
+			m += instructions.at(n).second.size();
 		}
 		else
 		{
-			return instructions.at(n).size() + m - hooksize;
+			return instructions.at(n).second.size() + m - hooksize;
 		}
 	}
 

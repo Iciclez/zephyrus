@@ -1,6 +1,5 @@
 #include "disassembler.hpp"
 
-#include "zephyrus.hpp"
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -9,8 +8,8 @@
 #include <algorithm>
 #include <iomanip>
 
-disassembler::disassembler(uint64_t address, const std::vector<uint8_t>& bytecode, disassembler_mode mode)
-	: bytecode(bytecode), mode(mode), address(address)
+disassembler::disassembler(uint64_t address, const std::vector<uint8_t>& raw_bytecode, disassembler_mode mode)
+	: raw_bytecode(raw_bytecode), mode(mode), address(address)
 {
 	ZydisMachineMode machine_mode = ZYDIS_MACHINE_MODE_LONG_64;
 
@@ -27,11 +26,11 @@ disassembler::disassembler(uint64_t address, const std::vector<uint8_t>& bytecod
 
 	size_t offset = 0;
 	ZydisDisassembledInstruction instruction;
-	while (ZYAN_SUCCESS(ZydisDisassembleIntel(machine_mode, address, this->bytecode.data() + offset, this->bytecode.size() - offset, &instruction))) 
+	while (ZYAN_SUCCESS(ZydisDisassembleIntel(machine_mode, address, this->raw_bytecode.data() + offset, this->raw_bytecode.size() - offset, &instruction)))
 	{
-		this->instructions.push_back(instruction);
-		this->instructions_address.push_back(this->address + offset);
-		this->instructions_bytecode.push_back(std::vector<uint8_t>(this->bytecode.data() + offset, this->bytecode.data() + offset + instruction.info.length));
+		this->instructions.push_back(std::make_pair(this->address + offset, instruction));
+		this->instructions_bytecode.push_back(std::make_pair(this->address + offset,
+			std::vector<uint8_t>(this->raw_bytecode.data() + offset, this->raw_bytecode.data() + offset + instruction.info.length)));
 
 		offset += instruction.info.length;
 		this->size += instruction.info.length;
@@ -47,43 +46,36 @@ size_t disassembler::get_size() const
 	return this->size;
 }
 
-std::vector<ZydisDisassembledInstruction> disassembler::get_instructions() const
+std::vector<std::pair<uint64_t, ZydisDisassembledInstruction>> disassembler::get() const
 {
 	return this->instructions;
 }
 
-std::vector<uint64_t> disassembler::get_instructions_address() const
-{
-	return this->instructions_address;
-}
-
-std::vector<std::vector<uint8_t>> disassembler::get_instructions_bytecode() const
+std::vector<std::pair<uint64_t, std::vector<uint8_t>>> disassembler::get_bytecode() const
 {
 	return this->instructions_bytecode;
 }
 
-std::string disassembler::get_instructions_string(const std::string& separator, const std::string& begin, const std::string& end) const
+std::string disassembler::as_string(const std::string& separator, const std::string& begin, const std::string& end) const
 {
-	std::stringstream stream;
+	std::stringstream ss;
 
 	for (size_t n = 0; n < this->instructions.size(); ++n)
 	{
-		stream << begin << this->instructions.at(n).text << end;
+		ss << begin << this->instructions.at(n).second.text << end;
 
 		if (n + 1 != this->size)
 		{
-			stream << separator;
+			ss << separator;
 		}
+	}
+
+	std::string res(ss.str());
+	std::transform(res.begin(), res.end(), res.begin(), ::toupper);
+	return res;
 }
 
-	std::string result(stream.str());
-
-	std::transform(result.begin(), result.end(), result.begin(), ::toupper);
-
-	return result;
-}
-
-std::vector<uint8_t> disassembler::get_bytecode() const
+std::vector<uint8_t> disassembler::get_raw_bytecode() const
 {
-	return this->bytecode;
+	return this->raw_bytecode;
 }

@@ -167,14 +167,14 @@ namespace zephyrus_test
 
 			disassembler memory(reinterpret_cast<uint64_t>(&n), z.readmemory(reinterpret_cast<uintptr_t>(&n), 5));
 
-			Assert::AreEqual<int32_t>(ZydisMnemonic::ZYDIS_MNEMONIC_JMP, memory.get_instructions().at(0).info.mnemonic);
-			Assert::AreEqual<int32_t>(ZydisOperandType::ZYDIS_OPERAND_TYPE_IMMEDIATE, memory.get_instructions().at(0).operands[0].type);
+			Assert::AreEqual<int32_t>(ZydisMnemonic::ZYDIS_MNEMONIC_JMP, memory.get().at(0).second.info.mnemonic);
+			Assert::AreEqual<int32_t>(ZydisOperandType::ZYDIS_OPERAND_TYPE_IMMEDIATE, memory.get().at(0).second.operands[0].type);
 
 			uint64_t zephyrus_test_function_address;
-			Assert::AreEqual(ZYAN_STATUS_SUCCESS, ZydisCalcAbsoluteAddress(&memory.get_instructions().at(0).info, &memory.get_instructions().at(0).operands[0], reinterpret_cast<uint64_t>(&n), &zephyrus_test_function_address));
+			Assert::AreEqual(ZYAN_STATUS_SUCCESS, ZydisCalcAbsoluteAddress(&memory.get().at(0).second.info, &memory.get().at(0).second.operands[0], reinterpret_cast<uint64_t>(&n), &zephyrus_test_function_address));
 			Assert::AreEqual(reinterpret_cast<uint64_t>(zephyrus_test_function), zephyrus_test_function_address);
 
-			Assert::AreEqual<uint64_t>(reinterpret_cast<uint64_t>(zephyrus_test_function), reinterpret_cast<uint64_t>(&n) + memory.get_instructions().at(0).info.length + memory.get_instructions().at(0).operands[0].imm.value.s);
+			Assert::AreEqual<uint64_t>(reinterpret_cast<uint64_t>(zephyrus_test_function), reinterpret_cast<uint64_t>(&n) + memory.get().at(0).second.info.length + memory.get().at(0).second.operands[0].imm.value.s);
 #endif
 		}
 
